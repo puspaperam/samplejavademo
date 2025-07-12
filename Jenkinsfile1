@@ -1,40 +1,66 @@
 pipeline {
-    agent any
-    tools{
-        maven 'apache-maven-3.8.6'
+    agent {
+        label 'linuxdocker' // This must match your agent label
+    }
+
+    tools {
+        git 'Default'
+        maven 'apache-maven-3.9.9'
     }
 
     stages {
-        stage('git checkout') {
+        stage('Checkout the Code') {
             steps {
-                git url:'https://github.com/bcreddydevops/samplejavademo.git', branch: 'master'
+                git url: 'https://github.com/puspaperam/samplejavademo.git'
             }
         }
-        stage('maven build') {
+
+        stage('Build the Code') {
             steps {
-                sh 'mvn clean package'
-            }
-        }
-         stage('Docker Build') {
-            steps {
-                sh "docker build . -t chinnareddaiah/samplejavademo:1.1.2"
-            }
-        }
-        stage('Docker Push') {
-            steps {
-                withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
-                 sh "docker login -u chinnareddaiah -p ${hubPwd}"
-                 sh "docker push chinnareddaiah/samplejavademo:1.1.2"
-              }
-            }
-        }
-        stage('Docker Deploy') {
-            steps {
-                sshagent(['docker-host']) {
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@3.85.44.51 docker rm -f samplejavademo "
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@3.85.44.51 docker run -d -p 8080:8080 --name samplejavademo chinnareddaiah/samplejavademo:1.1.2"
+                withMaven(maven: 'apache-maven-3.9.9') {
+                    sh 'mvn clean package'
                 }
             }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build . -t puspaperam/samplejavademo:1.1.2'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
+                    env.COMMIT_ID = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
+                        sh "echo ${hubpwd} | docker login -u puspaperam --password-stdin"
+                        sh "docker tag puspaperam/samplejavademo:1.1.2 puspaperam/samplejavademo:${COMMIT_ID}"
+                        sh "docker push puspaperam/samplejavademo:${COMMIT_ID}"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                sshagent(['tomcat-credentials']) {
+                    sh '''
+                        scp -o StrictHostKeyChecking=no target/hiring.war root@192.168.124.129:/opt/tomcat/webapps/
+                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/shutdown.sh"
+                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/startup.sh"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Build completed successfully.'
+        }
+        failure {
+            echo '❌ Build failed.'
         }
     }
 }
