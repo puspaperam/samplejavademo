@@ -1,46 +1,74 @@
-pipeline{
-    agent any
-    tools{
-        maven 'apache-maven-3.8.6'
+pipeline {
+    agent {
+        label 'linuxdocker'
     }
-    
-      
-    stages{
-        stage('checkout the code'){
-            steps{
-                git url:'https://github.com/bcreddydevops/samplejavademo.git', branch: 'master'
-            }
-        }
-        stage('build the code'){
-            steps{
-                sh 'mvn clean package'
-            }
-        }
-         stage('Docker Build') {
+
+    tools {
+        git 'Default'
+        maven 'apache-maven-3.9.9'
+    }
+
+    stages {
+        stage('Checkout the Code') {
             steps {
-                sh "docker build . -t chinnareddaiah/samplejavademo:${commit_id()}"
+                git url: 'https://github.com/puspaperam/samplejavademo.git'
             }
         }
-         stage('Docker Push') {
+
+        stage('Build the Code') {
             steps {
-                withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
-                 sh "docker login -u chinnareddaiah -p ${hubPwd}"
-                 sh "docker push chinnareddaiah/samplejavademo:${commit_id()}"
-              }
+                withMaven(maven: 'apache-maven-3.9.9') {
+                    sh 'mvn clean package'
+                }
             }
         }
-         stage('Docker Deploy') {
+
+        stage('Docker Build') {
             steps {
-                sshagent(['docker-host']) {
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@3.84.212.218 docker rm -f samplejavademo"
-                    sh "ssh ec2-user@3.84.212.218 docker run -d -p 8080:8080 --name samplejavademo chinnareddaiah/samplejavademo:${commit_id()}"
+                sh 'docker build . -t puspaperam/samplejavademo:1.1.2'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
+                    // Define closure inside script block
+                    def commit_id = {
+                        return sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    }
+
+                    def cid = commit_id()
+                    echo "Commit ID: ${cid}"
+
+                    withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
+                        sh "echo ${hubpwd} | docker login -u puspaperam --password-stdin"
+                        sh "docker tag puspaperam/samplejavademo:1.1.2 puspaperam/samplejavademo:${cid}"
+                        sh "docker push puspaperam/samplejavademo:${cid}"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                sshagent(['tomcat-credentials']) {
+                    sh '''
+                        scp -o StrictHostKeyChecking=no target/hiring.war root@192.168.124.129:/opt/tomcat/webapps/
+                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/shutdown.sh"
+                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/startup.sh"
+                    '''
                 }
             }
         }
     }
+
+    post {
+        success {
+            echo '✅ Build completed successfully.'
+        }
+        failure {
+            echo '❌ Build failed.'
+        }
+    }
 }
 
- def commit_id(){
-    id = sh returnStdout: true, script: 'git rev-parse HEAD'
-    return id
-    }
