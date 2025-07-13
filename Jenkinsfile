@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        label 'linuxdocker'
+        label 'linux-docker-agent'
     }
 
     tools {
