@@ -4,8 +4,12 @@ pipeline {
     }
 
     tools {
-        git 'git-linux'  // ✅ Use the correct Git tool name for Linux
+        git 'git-linux'
         maven 'apache-maven-3.9.9'
+    }
+
+    options {
+        skipDefaultCheckout(true) // ✅ Prevent Jenkins from using wrong Git
     }
 
     stages {
@@ -70,5 +74,6 @@ pipeline {
         }
     }
 }
+
 
 
