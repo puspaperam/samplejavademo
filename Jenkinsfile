@@ -4,7 +4,7 @@ pipeline {
     }
 
     tools {
-        git 'git-linux'
+        git 'linux-git'
         maven 'apache-maven-3.9.9'
     }
 
@@ -89,6 +89,5 @@ pipeline {
     }
 }
 
-
-
-
+       
+ 
