@@ -4,10 +4,9 @@ pipeline {
     }
 
     tools {
-    git 'linux-git'
-    maven 'apache-maven-3.9.9'
-}
-
+        git 'linux-git'
+        maven 'apache-maven-3.9.9'
+    }
 
     options {
         skipDefaultCheckout(true)
@@ -23,7 +22,10 @@ pipeline {
 
         stage('Checkout the Code') {
             steps {
-                git url: 'https://github.com/puspaperam/samplejavademo.git'
+                // Use SSH URL and specify the SSH credential ID
+                git branch: 'master',
+                    credentialsId: 'github-ssh-key',
+                    url: 'git@github.com:puspaperam/samplejavademo.git'
             }
         }
 
@@ -89,6 +91,9 @@ pipeline {
         }
     }
 }
+
+
+  
 
        
  
