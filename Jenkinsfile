@@ -4,7 +4,7 @@ pipeline {
     }
 
     tools {
-        git 'linux-git'
+        git 'windows-git'
         maven 'apache-maven-3.9.9'
     }
 
