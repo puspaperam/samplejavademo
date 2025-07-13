@@ -1,31 +1,17 @@
 pipeline {
     agent {
-        label 'linux-docker-agent'
+        label 'linuxdocker'
     }
 
     tools {
-        git 'linux-git'
+        git 'Default'
         maven 'apache-maven-3.9.9'
     }
 
-    options {
-        skipDefaultCheckout(true)
-    }
-
     stages {
-        stage('Check Environment') {
-            steps {
-                sh 'git --version'
-                sh 'docker --version'
-            }
-        }
-
         stage('Checkout the Code') {
             steps {
-                // Use SSH URL and specify the SSH credential ID
-                git branch: 'master',
-                    credentialsId: 'github-ssh-key',
-                    url: 'git@github.com:puspaperam/samplejavademo.git'
+                git url: 'https://github.com/puspaperam/samplejavademo.git'
             }
         }
 
@@ -33,17 +19,6 @@ pipeline {
             steps {
                 withMaven(maven: 'apache-maven-3.9.9') {
                     sh 'mvn clean package'
-                }
-            }
-        }
-
-        stage('SonarQube Scan') {
-            environment {
-                scannerHome = tool 'sonarqube-scanner'
-            }
-            steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh "${scannerHome}/bin/sonar-scanner"
                 }
             }
         }
@@ -57,7 +32,12 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    def cid = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    // Define closure inside script block
+                    def commit_id = {
+                        return sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    }
+
+                    def cid = commit_id()
                     echo "Commit ID: ${cid}"
 
                     withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
@@ -69,31 +49,5 @@ pipeline {
             }
         }
 
-        stage('Deploy to Tomcat') {
-            steps {
-                sshagent(['tomcat-credentials']) {
-                    sh '''
-                        scp -o StrictHostKeyChecking=no target/hiring.war root@192.168.124.129:/opt/tomcat/webapps/
-                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/shutdown.sh"
-                        ssh -o StrictHostKeyChecking=no root@192.168.124.129 "/opt/tomcat/bin/startup.sh"
-                    '''
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Build completed successfully.'
-        }
-        failure {
-            echo '❌ Build failed.'
-        }
-    }
-}
-
-
-  
-
-       
- 
+      
+   
