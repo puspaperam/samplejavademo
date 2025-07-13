@@ -9,10 +9,17 @@ pipeline {
     }
 
     options {
-        skipDefaultCheckout(true) // ✅ Prevent Jenkins from using wrong Git
+        skipDefaultCheckout(true)
     }
 
     stages {
+        stage('Check Environment') {
+            steps {
+                sh 'git --version'
+                sh 'docker --version'
+            }
+        }
+
         stage('Checkout the Code') {
             steps {
                 git url: 'https://github.com/puspaperam/samplejavademo.git'
@@ -27,6 +34,17 @@ pipeline {
             }
         }
 
+        stage('SonarQube Scan') {
+            environment {
+                scannerHome = tool 'sonarqube-scanner'
+            }
+            steps {
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+        }
+
         stage('Docker Build') {
             steps {
                 sh 'docker build . -t puspaperam/samplejavademo:1.1.2'
@@ -36,11 +54,7 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    def commit_id = {
-                        return sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    }
-
-                    def cid = commit_id()
+                    def cid = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     echo "Commit ID: ${cid}"
 
                     withCredentials([string(credentialsId: 'docker-hub1', variable: 'hubpwd')]) {
@@ -74,6 +88,7 @@ pipeline {
         }
     }
 }
+
 
 
 
