@@ -4,9 +4,10 @@ pipeline {
     }
 
     tools {
-        git 'windows-git'
-        maven 'apache-maven-3.9.9'
-    }
+    git 'linux-git'
+    maven 'apache-maven-3.9.9'
+}
+
 
     options {
         skipDefaultCheckout(true)
