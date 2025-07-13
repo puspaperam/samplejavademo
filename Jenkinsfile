@@ -4,7 +4,7 @@ pipeline {
     }
 
     tools {
-        git 'Default'
+        git 'git-linux'  // ✅ Use the correct Git tool name for Linux
         maven 'apache-maven-3.9.9'
     }
 
@@ -32,7 +32,6 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    // Define closure inside script block
                     def commit_id = {
                         return sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     }
@@ -71,4 +70,5 @@ pipeline {
         }
     }
 }
+
 
